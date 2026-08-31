@@ -19,26 +19,43 @@ CONFIGURATION_NAME = "macOS Conda (university-dev)"
 BUILD_TASK_LABEL = "C/C++: Conda compiler build active file"
 
 
-def compiler_path(variable: str) -> tuple[str, list[str]]:
+def executable_path(value: str) -> str | None:
+    executable = shutil.which(value)
+    if executable is not None:
+        return str(Path(executable).absolute())
+
+    candidate = Path(value).expanduser()
+    if candidate.is_file() and os.access(candidate, os.X_OK):
+        return str(candidate.absolute())
+    return None
+
+
+def compiler_path(
+    variable: str, conda_prefix: Path, fallback_patterns: tuple[str, ...]
+) -> tuple[str, list[str]]:
     raw_value = os.environ.get(variable, "").strip()
-    if not raw_value:
-        raise RuntimeError(
-            f"Conda did not set {variable}. Confirm that cxx-compiler is installed "
-            "in the university-dev environment."
-        )
-
-    parts = shlex.split(raw_value)
-    executable = shutil.which(parts[0])
-    if executable is None:
-        candidate = Path(parts[0]).expanduser()
-        if candidate.is_file() and os.access(candidate, os.X_OK):
-            executable = str(candidate.absolute())
-        else:
+    if raw_value:
+        parts = shlex.split(raw_value)
+        executable = executable_path(parts[0])
+        if executable is None:
             raise RuntimeError(f"The {variable} compiler is not executable: {parts[0]}")
+        return executable, parts[1:]
 
-    # Preserve Conda's compiler wrapper/symlink name. Resolving it can bypass the
-    # wrapper behavior that supplies the target platform and sysroot defaults.
-    return str(Path(executable).absolute()), parts[1:]
+    # Some `conda run` versions do not expose compiler activation variables even
+    # though the compiler wrappers are installed. Prefer the target-prefixed
+    # Conda wrapper, which carries the correct macOS target and sysroot behavior.
+    bin_directory = conda_prefix / "bin"
+    for pattern in fallback_patterns:
+        for candidate in sorted(bin_directory.glob(pattern)):
+            if candidate.is_file() and os.access(candidate, os.X_OK):
+                return str(candidate.absolute()), []
+
+    patterns = ", ".join(fallback_patterns)
+    raise RuntimeError(
+        f"Conda did not set {variable}, and no compiler matching {patterns} was "
+        f"found under {bin_directory}. Run `conda list -n university-dev "
+        "cxx-compiler` to confirm the package is installed."
+    )
 
 
 def read_json(path: Path, default: Any) -> Any:
@@ -94,11 +111,22 @@ def main() -> int:
     vscode_directory = workspace / ".vscode"
     vscode_directory.mkdir(parents=True, exist_ok=True)
 
-    cc_path, cc_inline_args = compiler_path("CC")
-    cxx_path, cxx_inline_args = compiler_path("CXX")
+    conda_prefix = Path(os.environ.get("CONDA_PREFIX", sys.prefix)).resolve()
+    cc_path, cc_inline_args = compiler_path(
+        "CC",
+        conda_prefix,
+        ("*-apple-darwin*-clang", "*-conda-darwin*-clang", "clang"),
+    )
+    cxx_path, cxx_inline_args = compiler_path(
+        "CXX",
+        conda_prefix,
+        ("*-apple-darwin*-clang++", "*-conda-darwin*-clang++", "clang++"),
+    )
     cxx_flags = cxx_inline_args + shlex.split(os.environ.get("CXXFLAGS", ""))
     architecture = "arm64" if platform.machine() in {"arm64", "aarch64"} else "x64"
     environment = compiler_environment()
+    environment["CC"] = cc_path
+    environment["CXX"] = cxx_path
 
     activation_path = vscode_directory / "activate-university-dev.sh"
     activation_path.write_text(
