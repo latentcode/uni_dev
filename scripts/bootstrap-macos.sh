@@ -170,11 +170,25 @@ if command -v code >/dev/null 2>&1; then
         ms-azuretools.vscode-containers
         openai.chatgpt
     )
+
+    if ! installed_extensions="$(code --list-extensions)"; then
+        warn "Could not list installed VS Code extensions; attempting installation."
+        installed_extensions=""
+    fi
+    extension_install_arguments=()
     for extension in "${extensions[@]}"; do
-        if ! code --install-extension "${extension}" --force; then
-            warn "Could not install VS Code extension ${extension}; install it from VS Code."
+        if grep -Fxiq "${extension}" <<< "${installed_extensions}"; then
+            printf 'Already installed: VS Code extension %s\n' "${extension}"
+        else
+            extension_install_arguments+=(--install-extension "${extension}")
         fi
     done
+
+    if [[ "${#extension_install_arguments[@]}" -gt 0 ]] \
+        && ! code "${extension_install_arguments[@]}"; then
+        warn "Could not install one or more recommended VS Code extensions."
+        warn "Open this repository in VS Code and install its recommended extensions."
+    fi
 else
     warn "The 'code' command is not on PATH; install the recommended extensions from VS Code."
 fi
