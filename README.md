@@ -60,6 +60,10 @@ The script is idempotent and checks or installs:
 - The `university-dev` Conda environment
 - Both Docker images
 
+Applications already present in `/Applications` are accepted even when they
+were installed manually rather than through Homebrew. The script temporarily
+adds the VS Code and Docker application CLI directories to `PATH` when needed.
+
 Apple's Command Line Tools installer is interactive. If it opens, finish that
 installation and run the bootstrap script again. Docker Desktop may also ask
 for normal first-run permissions.

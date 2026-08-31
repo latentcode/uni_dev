@@ -40,8 +40,11 @@ fi
 
 install_cask() {
     local cask="$1"
+    local existing_path="${2:-}"
     if brew list --cask "${cask}" >/dev/null 2>&1; then
         printf 'Already installed: %s\n' "${cask}"
+    elif [[ -n "${existing_path}" && -e "${existing_path}" ]]; then
+        printf 'Already installed outside Homebrew: %s\n' "${existing_path}"
     else
         brew install --cask "${cask}"
     fi
@@ -57,10 +60,30 @@ install_formula() {
 }
 
 log "Installing host applications"
-install_cask docker
-install_cask visual-studio-code
-install_cask miniconda
+install_cask docker "/Applications/Docker.app"
+install_cask visual-studio-code "/Applications/Visual Studio Code.app"
+
+if command -v conda >/dev/null 2>&1 \
+    || [[ -x /opt/homebrew/Caskroom/miniconda/base/bin/conda ]] \
+    || [[ -x /usr/local/Caskroom/miniconda/base/bin/conda ]] \
+    || [[ -x "${HOME}/miniconda3/bin/conda" ]]; then
+    printf 'Already installed: Miniconda\n'
+else
+    install_cask miniconda
+fi
+
 install_formula gh
+
+# Manually installed applications may not have placed their CLIs on PATH yet.
+if ! command -v code >/dev/null 2>&1 \
+    && [[ -x "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" ]]; then
+    export PATH="/Applications/Visual Studio Code.app/Contents/Resources/app/bin:${PATH}"
+fi
+
+if ! command -v docker >/dev/null 2>&1 \
+    && [[ -d "/Applications/Docker.app/Contents/Resources/bin" ]]; then
+    export PATH="/Applications/Docker.app/Contents/Resources/bin:${PATH}"
+fi
 
 log "Creating the local environment file"
 if [[ ! -f "${ENV_FILE}" ]]; then
