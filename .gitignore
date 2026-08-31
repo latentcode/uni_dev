@@ -1,6 +1,11 @@
 .DS_Store
 .env
 .vscode/*.local.json
+.vscode/activate-university-dev.sh
+.vscode/c_cpp_properties.json
+.vscode/cmake-kits.json
+.vscode/settings.json
+.vscode/tasks.json
 
 # Local Python and build products
 .venv/

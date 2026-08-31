@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Generate machine-local VS Code configuration for the active Conda compiler."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import platform
+import shlex
+import shutil
+import stat
+import sys
+from typing import Any
+
+
+CONFIGURATION_NAME = "macOS Conda (university-dev)"
+BUILD_TASK_LABEL = "C/C++: Conda compiler build active file"
+
+
+def compiler_path(variable: str) -> tuple[str, list[str]]:
+    raw_value = os.environ.get(variable, "").strip()
+    if not raw_value:
+        raise RuntimeError(
+            f"Conda did not set {variable}. Confirm that cxx-compiler is installed "
+            "in the university-dev environment."
+        )
+
+    parts = shlex.split(raw_value)
+    executable = shutil.which(parts[0])
+    if executable is None:
+        candidate = Path(parts[0]).expanduser()
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            executable = str(candidate.absolute())
+        else:
+            raise RuntimeError(f"The {variable} compiler is not executable: {parts[0]}")
+
+    # Preserve Conda's compiler wrapper/symlink name. Resolving it can bypass the
+    # wrapper behavior that supplies the target platform and sysroot defaults.
+    return str(Path(executable).absolute()), parts[1:]
+
+
+def read_json(path: Path, default: Any) -> Any:
+    if not path.exists():
+        return default
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as error:
+        raise RuntimeError(f"Cannot update invalid JSON file {path}: {error}") from error
+
+
+def write_json(path: Path, value: Any) -> None:
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
+
+
+def replace_named(items: list[dict[str, Any]], name: str, value: dict[str, Any]) -> None:
+    items[:] = [item for item in items if item.get("name") != name]
+    items.append(value)
+
+
+def compiler_environment() -> dict[str, str]:
+    names = (
+        "AR",
+        "CC",
+        "CFLAGS",
+        "CONDA_BUILD_SYSROOT",
+        "CONDA_DEFAULT_ENV",
+        "CONDA_PREFIX",
+        "CPPFLAGS",
+        "CXX",
+        "CXXFLAGS",
+        "LD",
+        "LDFLAGS",
+        "MACOSX_DEPLOYMENT_TARGET",
+        "NM",
+        "PATH",
+        "RANLIB",
+        "SDKROOT",
+        "STRIP",
+    )
+    return {name: os.environ[name] for name in names if os.environ.get(name)}
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--workspace", required=True, type=Path)
+    parser.add_argument("--conda-exe", required=True, type=Path)
+    args = parser.parse_args()
+
+    workspace = args.workspace.expanduser().resolve()
+    vscode_directory = workspace / ".vscode"
+    vscode_directory.mkdir(parents=True, exist_ok=True)
+
+    cc_path, cc_inline_args = compiler_path("CC")
+    cxx_path, cxx_inline_args = compiler_path("CXX")
+    cxx_flags = cxx_inline_args + shlex.split(os.environ.get("CXXFLAGS", ""))
+    architecture = "arm64" if platform.machine() in {"arm64", "aarch64"} else "x64"
+    environment = compiler_environment()
+
+    activation_path = vscode_directory / "activate-university-dev.sh"
+    activation_path.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -e\n"
+        f'eval "$("{args.conda_exe.resolve()}" shell.bash hook)"\n'
+        "conda activate university-dev\n",
+        encoding="utf-8",
+    )
+    activation_path.chmod(activation_path.stat().st_mode | stat.S_IXUSR)
+
+    properties_path = vscode_directory / "c_cpp_properties.json"
+    properties = read_json(properties_path, {"configurations": [], "version": 4})
+    configurations = properties.setdefault("configurations", [])
+    replace_named(
+        configurations,
+        CONFIGURATION_NAME,
+        {
+            "name": CONFIGURATION_NAME,
+            "compilerPath": cxx_path,
+            "compilerArgs": cxx_flags,
+            "cStandard": "c17",
+            "cppStandard": "c++20",
+            "intelliSenseMode": f"macos-clang-{architecture}",
+        },
+    )
+    properties["version"] = 4
+    write_json(properties_path, properties)
+
+    kits_path = vscode_directory / "cmake-kits.json"
+    kits = read_json(kits_path, [])
+    replace_named(
+        kits,
+        CONFIGURATION_NAME,
+        {
+            "name": CONFIGURATION_NAME,
+            "keep": True,
+            "preferredGenerator": "Ninja",
+            "environmentSetupScript": "${workspaceFolder}/.vscode/activate-university-dev.sh",
+            "environmentVariables": environment,
+            "compilers": {"C": cc_path, "CXX": cxx_path},
+        },
+    )
+    write_json(kits_path, kits)
+
+    settings_path = vscode_directory / "settings.json"
+    settings = read_json(settings_path, {})
+    settings.update(
+        {
+            "C_Cpp.default.compilerPath": cxx_path,
+            "C_Cpp.default.compilerArgs": cxx_flags,
+            "C_Cpp.default.cStandard": "c17",
+            "C_Cpp.default.cppStandard": "c++20",
+            "cmake.generator": "Ninja",
+        }
+    )
+    write_json(settings_path, settings)
+
+    tasks_path = vscode_directory / "tasks.json"
+    tasks = read_json(tasks_path, {"version": "2.0.0", "tasks": []})
+    task_items = tasks.setdefault("tasks", [])
+    task_items[:] = [task for task in task_items if task.get("label") != BUILD_TASK_LABEL]
+    task_items.append(
+        {
+            "type": "shell",
+            "label": BUILD_TASK_LABEL,
+            "command": cxx_path,
+            "args": cxx_flags
+            + [
+                "-std=c++20",
+                "-g",
+                "${file}",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}",
+            ],
+            "options": {"cwd": "${fileDirname}", "env": environment},
+            "problemMatcher": ["$gcc"],
+            "group": {"kind": "build", "isDefault": True},
+            "detail": "Generated from the university-dev Conda environment.",
+        }
+    )
+    tasks["version"] = "2.0.0"
+    write_json(tasks_path, tasks)
+
+    print(f"Configured VS Code C compiler:   {cc_path}")
+    print(f"Configured VS Code C++ compiler: {cxx_path}")
+    print(f"Generated configuration under:   {vscode_directory}")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except RuntimeError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        raise SystemExit(1) from error

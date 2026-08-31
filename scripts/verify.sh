@@ -45,4 +45,18 @@ else
     failed=1
 fi
 
+for vscode_file in \
+    .vscode/activate-university-dev.sh \
+    .vscode/c_cpp_properties.json \
+    .vscode/cmake-kits.json \
+    .vscode/settings.json \
+    .vscode/tasks.json; do
+    if [[ -f "${PROJECT_ROOT}/${vscode_file}" ]]; then
+        printf 'PASS  VS Code      %s exists\n' "${vscode_file}"
+    else
+        printf 'FAIL  VS Code      %s is missing\n' "${vscode_file}"
+        failed=1
+    fi
+done
+
 exit "${failed}"

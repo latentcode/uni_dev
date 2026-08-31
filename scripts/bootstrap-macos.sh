@@ -146,6 +146,12 @@ fi
 
 "${CONDA_BIN}" init "$(basename "${SHELL:-/bin/zsh}")" >/dev/null
 
+log "Configuring VS Code to use the Conda C and C++ compilers"
+"${CONDA_BIN}" run --no-capture-output --name university-dev \
+    python "${PROJECT_ROOT}/scripts/configure-vscode.py" \
+    --workspace "${PROJECT_ROOT}" \
+    --conda-exe "${CONDA_BIN}"
+
 log "Installing the Codex CLI"
 if command -v codex >/dev/null 2>&1; then
     printf 'Already installed: codex\n'
@@ -196,7 +202,8 @@ docker compose --project-directory "${PROJECT_ROOT}" build
 log "Bootstrap complete"
 printf '%s\n' \
     "1. Review ${ENV_FILE} and set paths, ports, or optional tokens." \
-    "2. Restart your shell, then run: conda activate university-dev" \
-    "3. Sign in interactively with: gh auth login" \
-    "4. Sign in to Codex with: codex" \
-    "5. Start Apache with: docker compose --project-directory ${PROJECT_ROOT} up -d web"
+    "2. Restart VS Code so it reloads the generated Conda compiler configuration." \
+    "3. Restart your shell, then run: conda activate university-dev" \
+    "4. Sign in interactively with: gh auth login" \
+    "5. Sign in to Codex with: codex" \
+    "6. Start Apache with: docker compose --project-directory ${PROJECT_ROOT} up -d web"

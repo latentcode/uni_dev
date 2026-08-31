@@ -59,6 +59,7 @@ The script is idempotent and checks or installs:
 - Recommended VS Code extensions
 - Microsoft's C/C++ Extension Pack and CMake Tools
 - The `university-dev` Conda environment
+- Machine-local VS Code compiler, build-task, and CMake-kit configuration
 - Both Docker images
 
 Applications already present in `/Applications` are accepted even when they
@@ -215,6 +216,36 @@ conda activate university-dev
 
 The environment is defined by `environment-macos.yml` and includes Python,
 the Conda-forge native C++ compiler toolchain, CMake, Ninja, and pytest.
+
+The bootstrap activates that environment non-interactively, discovers the
+actual Conda C and C++ compiler paths, and generates these machine-local files:
+
+- `.vscode/c_cpp_properties.json` for C/C++ IntelliSense
+- `.vscode/settings.json` for the default C/C++ compiler and language standards
+- `.vscode/tasks.json` for the default active-file build task (`Cmd+Shift+B`)
+- `.vscode/cmake-kits.json` for a `macOS Conda (university-dev)` CMake kit
+- `.vscode/activate-university-dev.sh` for CMake Tools environment activation
+
+These files contain Mac-specific absolute paths, so Git ignores them. Open the
+`uni_dev` repository root in VS Code and restart or reload the window after
+bootstrap. The Microsoft C/C++ extension then uses the Conda compiler without
+asking you to paste its path. For a CMake project, select the generated
+`macOS Conda (university-dev)` kit if CMake Tools asks for a kit the first time.
+It remembers that choice for the workspace.
+
+VS Code applies `.vscode` configuration from the folder opened as the
+workspace. If you open an assignment directory by itself instead of opening it
+under the `uni_dev` workspace, generate the same configuration there with:
+
+```bash
+conda activate university-dev
+python /path/to/uni_dev/scripts/configure-vscode.py \
+  --workspace "$PWD" \
+  --conda-exe "$CONDA_EXE"
+```
+
+Rerun `./scripts/bootstrap-macos.sh` after moving or updating Miniconda so the
+repository-level paths are regenerated.
 
 Example native build:
 
