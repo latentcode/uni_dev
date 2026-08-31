@@ -85,6 +85,9 @@ if ! command -v docker >/dev/null 2>&1 \
     export PATH="/Applications/Docker.app/Contents/Resources/bin:${PATH}"
 fi
 
+log "Creating default user source directories"
+mkdir -p "${PROJECT_ROOT}/classes" "${PROJECT_ROOT}/personal/web"
+
 log "Creating the local environment file"
 if [[ ! -f "${ENV_FILE}" ]]; then
     cp "${PROJECT_ROOT}/.env.example" "${ENV_FILE}"

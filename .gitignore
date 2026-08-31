@@ -12,9 +12,12 @@
 .venv/
 __pycache__/
 *.py[cod]
+*.dSYM/
 build/
 build-*/
 cmake-build-*/
 
-# Student/web projects may contain their own ignore rules. Do not ignore the
-# classes/ or personal/web/ roots because they define the expected layout.
+# User-owned source storage. Projects under these roots may use their own Git
+# repositories, another version-control system, or no version control.
+/classes/
+/personal/

@@ -24,6 +24,16 @@ A file saved on macOS is immediately visible in the container, and a file saved
 in the container is immediately visible on macOS. This allows an assignment to
 be edited and built either natively or in Ubuntu.
 
+These default source directories are user-owned storage, not part of the
+`uni_dev` repository. Git ignores `/classes/` and `/personal/`, and bootstrap
+creates them when they are absent. Their contents may be plain local files,
+independent Git repositories hosted anywhere, projects using another
+version-control system, or projects with no version control at all.
+
+An independent Git repository nested under either ignored directory works
+normally when Git commands are run from that project. Its own `.gitignore`
+should exclude its generated files, such as `*.dSYM/` and build directories.
+
 Keep platform-specific generated files separate. In particular:
 
 - Use `build-macos/` for native CMake output.
@@ -60,6 +70,7 @@ The script is idempotent and checks or installs:
 - Microsoft's C/C++ Extension Pack and CMake Tools
 - The `university-dev` Conda environment
 - Machine-local VS Code compiler, build-task, and CMake-kit configuration
+- The default ignored `classes/` and `personal/web/` source directories
 - Both Docker images
 
 Applications already present in `/Applications` are accepted even when they
@@ -97,7 +108,10 @@ loads it.
 | `DEV_OPENAI_API_KEY` | Optional OpenAI key injected as `OPENAI_API_KEY` | empty |
 
 Paths may be relative to this repository or absolute. Do not use `~` in
-`.env`; use a full path such as `/Users/alex/classes`.
+`.env`; use a full path such as `/Users/alex/classes`. Absolute paths are useful
+when source should live entirely outside the `uni_dev` directory. The bootstrap
+creates only the two default relative directories; create a custom external
+directory before starting its container.
 
 ### Credentials
 
@@ -287,17 +301,19 @@ repository's `AGENTS.md` gives Codex the standard build and test commands.
 ## Sharing
 
 Commit this repository's Dockerfiles, Compose file, Dev Container definitions,
-Conda file, scripts, and `.env.example`. Never commit `.env`.
+Conda file, scripts, and `.env.example`. Never commit `.env`, `classes/`, or
+`personal/` to the `uni_dev` repository. Those source roots are ignored and
+belong entirely to the user.
+
+Projects inside those roots may each be separate repositories. They do not
+need to use Git or GitHub; Docker bind mounts and the development tools operate
+on ordinary directories.
 
 Docker Hub is not required: collaborators can clone the repository and run the
 bootstrap or `docker compose build`. Publishing images to Docker Hub or GitHub
 Container Registry can be added later if builds become expensive or a deployment
 pipeline needs immutable images.
 
-On a fresh clone, create the expected source roots if they do not exist:
-
-```bash
-mkdir -p classes personal/web
-```
-
-Then run the bootstrap script.
+On a fresh clone, run the bootstrap script. It creates the default ignored
+source roots automatically. If `.env` points to external source directories,
+create those directories separately before starting the containers.
