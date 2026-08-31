@@ -57,6 +57,7 @@ The script is idempotent and checks or installs:
 - GitHub CLI
 - Codex CLI
 - Recommended VS Code extensions
+- Microsoft's C/C++ Extension Pack and CMake Tools
 - The `university-dev` Conda environment
 - Both Docker images
 

@@ -158,7 +158,7 @@ log "Installing recommended VS Code extensions"
 if command -v code >/dev/null 2>&1; then
     extensions=(
         ms-python.python
-        ms-vscode.cpptools
+        ms-vscode.cpptools-extension-pack
         ms-vscode.cmake-tools
         ms-vscode-remote.remote-containers
         ms-azuretools.vscode-containers
