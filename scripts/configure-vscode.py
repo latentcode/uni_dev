@@ -17,6 +17,7 @@ from typing import Any
 
 CONFIGURATION_NAME = "macOS Conda (university-dev)"
 BUILD_TASK_LABEL = "C/C++: Conda compiler build active file"
+DEBUG_CONFIGURATION_NAME = "C/C++: Conda build and debug active file"
 
 
 def executable_path(value: str) -> str | None:
@@ -191,7 +192,7 @@ def main() -> int:
     task_items[:] = [task for task in task_items if task.get("label") != BUILD_TASK_LABEL]
     task_items.append(
         {
-            "type": "shell",
+            "type": "cppbuild",
             "label": BUILD_TASK_LABEL,
             "command": cxx_path,
             "args": cxx_flags
@@ -210,6 +211,29 @@ def main() -> int:
     )
     tasks["version"] = "2.0.0"
     write_json(tasks_path, tasks)
+
+    launch_path = vscode_directory / "launch.json"
+    launch = read_json(launch_path, {"version": "0.2.0", "configurations": []})
+    debug_configurations = launch.setdefault("configurations", [])
+    replace_named(
+        debug_configurations,
+        DEBUG_CONFIGURATION_NAME,
+        {
+            "name": DEBUG_CONFIGURATION_NAME,
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${fileDirname}/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": False,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": False,
+            "MIMode": "lldb",
+            "preLaunchTask": BUILD_TASK_LABEL,
+        },
+    )
+    launch["version"] = "0.2.0"
+    write_json(launch_path, launch)
 
     print(f"Configured VS Code C compiler:   {cc_path}")
     print(f"Configured VS Code C++ compiler: {cxx_path}")

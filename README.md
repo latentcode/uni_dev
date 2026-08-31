@@ -223,15 +223,20 @@ actual Conda C and C++ compiler paths, and generates these machine-local files:
 - `.vscode/c_cpp_properties.json` for C/C++ IntelliSense
 - `.vscode/settings.json` for the default C/C++ compiler and language standards
 - `.vscode/tasks.json` for the default active-file build task (`Cmd+Shift+B`)
+- `.vscode/launch.json` for active-file Run and Debug commands
 - `.vscode/cmake-kits.json` for a `macOS Conda (university-dev)` CMake kit
 - `.vscode/activate-university-dev.sh` for CMake Tools environment activation
 
 These files contain Mac-specific absolute paths, so Git ignores them. Open the
 `uni_dev` repository root in VS Code and restart or reload the window after
 bootstrap. The Microsoft C/C++ extension then uses the Conda compiler without
-asking you to paste its path. For a CMake project, select the generated
-`macOS Conda (university-dev)` kit if CMake Tools asks for a kit the first time.
-It remembers that choice for the workspace.
+asking you to paste its path. Its Run/Debug button and `Cmd+Shift+B` use the
+generated Conda task when `uni_dev` is the open workspace.
+
+For a CMake project, select the generated `macOS Conda (university-dev)` kit if
+CMake Tools asks for a kit the first time. CMake Tools stores the active kit in
+its private workspace state and does not provide a supported setting that the
+bootstrap can preselect. It remembers the one-time choice for the workspace.
 
 VS Code applies `.vscode` configuration from the folder opened as the
 workspace. If you open an assignment directory by itself instead of opening it

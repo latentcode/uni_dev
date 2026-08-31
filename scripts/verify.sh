@@ -49,6 +49,7 @@ for vscode_file in \
     .vscode/activate-university-dev.sh \
     .vscode/c_cpp_properties.json \
     .vscode/cmake-kits.json \
+    .vscode/launch.json \
     .vscode/settings.json \
     .vscode/tasks.json; do
     if [[ -f "${PROJECT_ROOT}/${vscode_file}" ]]; then
