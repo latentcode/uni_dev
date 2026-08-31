@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.vscode/*.local.json
+
+# Local Python and build products
+.venv/
+__pycache__/
+*.py[cod]
+build/
+build-*/
+cmake-build-*/
+
+# Student/web projects may contain their own ignore rules. Do not ignore the
+# classes/ or personal/web/ roots because they define the expected layout.

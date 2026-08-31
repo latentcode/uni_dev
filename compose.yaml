@@ -1,0 +1,46 @@
+name: university-development
+
+services:
+  web:
+    build:
+      context: ./docker/web
+    init: true
+    environment:
+      GH_TOKEN: ${DEV_GH_TOKEN:-}
+      OPENAI_API_KEY: ${DEV_OPENAI_API_KEY:-}
+      WEB_CONTAINER_WEB_ROOT: ${WEB_CONTAINER_WEB_ROOT:-/var/www/html}
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-8080}:80"
+    volumes:
+      - type: bind
+        source: ${HOST_WEB_ROOT:-./personal/web}
+        target: ${WEB_CONTAINER_WEB_ROOT:-/var/www/html}
+        bind:
+          create_host_path: false
+      - web-python-environments:/opt/venvs
+
+  programming:
+    build:
+      context: ./docker/programming
+      args:
+        DEV_UID: ${DEV_UID:-1000}
+        DEV_GID: ${DEV_GID:-1000}
+    init: true
+    environment:
+      GH_TOKEN: ${DEV_GH_TOKEN:-}
+      OPENAI_API_KEY: ${DEV_OPENAI_API_KEY:-}
+    ports:
+      - "127.0.0.1:${PROGRAMMING_HOST_PORT:-8000}:${PROGRAMMING_CONTAINER_PORT:-8000}"
+    stdin_open: true
+    tty: true
+    volumes:
+      - type: bind
+        source: ${HOST_PROGRAMMING_ROOT:-./classes}
+        target: /workspace/classes
+        bind:
+          create_host_path: false
+      - programming-python-environments:/home/student/.venvs
+
+volumes:
+  web-python-environments:
+  programming-python-environments:

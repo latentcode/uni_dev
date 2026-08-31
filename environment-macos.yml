@@ -1,0 +1,10 @@
+name: university-dev
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - cxx-compiler
+  - cmake
+  - ninja
+  - pip
+  - pytest

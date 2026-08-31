@@ -1,0 +1,15 @@
+{
+  "name": "University Web Development",
+  "dockerComposeFile": "../../compose.yaml",
+  "service": "web",
+  "workspaceFolder": "/var/www/html",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "openai.chatgpt"
+      ]
+    }
+  }
+}
