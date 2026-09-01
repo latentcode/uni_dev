@@ -257,6 +257,38 @@ leave Apache in Docker. For a complete VS Code session inside Ubuntu, follow
 
 ## Programming classes
 
+### Using VS Code in the programming container
+
+Use a Dev Container window when VS Code itself—including its terminal,
+extensions, compiler integration, debugger, Python support, and Codex—should
+operate in Ubuntu:
+
+1. Start Docker Desktop, but do not run `docker.sh` first; VS Code can start the
+   service itself.
+2. Open the `uni_dev` repository root in VS Code.
+3. Press `Cmd+Shift+P` and run **Dev Containers: Reopen in Container**.
+4. Select **University Programming**.
+5. Wait for VS Code to build or start the Compose service and install the
+   requested remote extensions.
+6. Open an assignment under `/workspace/classes` in the Explorer and edit it
+   normally.
+
+The lower-left remote indicator shows **University Programming** when the
+window is connected. The integrated terminal is an Ubuntu shell, C and C++ use
+GCC/G++, Python uses the container interpreter, and CMake generates Linux build
+output. The `/workspace/classes` files are still stored in the Mac directory
+selected by `HOST_PROGRAMMING_ROOT`.
+
+For a simple C++ file, the container's C/C++ extension may show its normal
+first-run build-compiler picker because each user-owned source workspace has
+its own build configuration. Select the entry for `/usr/bin/g++`; VS Code saves
+that choice in the source workspace's `.vscode/tasks.json`. A CMake-based
+assignment should normally be configured and built with CMake Tools instead.
+
+To return to macOS tooling, press `Cmd+Shift+P` and run **Dev Containers:
+Reopen Folder Locally**. Opening or closing a Dev Container does not move or
+delete the bind-mounted source files.
+
 ### Starting and stopping the programming container
 
 Commands shown must be run from the uni_dev root directory.
@@ -339,6 +371,13 @@ bootstrap. The Microsoft C/C++ extension then uses the Conda compiler without
 asking you to paste its path. Its Run/Debug button and `Cmd+Shift+B` use the
 generated Conda task when `uni_dev` is the open workspace.
 
+Under this repository-root workflow, there is no first-run compiler selection:
+the bootstrap has already selected the Conda compiler and generated the default
+build and debug configurations. If VS Code nevertheless displays a compiler
+picker, first confirm that `uni_dev`—not an individual assignment directory—is
+the folder open in that window, run `./scripts/verify.sh`, and reload the VS
+Code window.
+
 For a CMake project, select the generated `macOS Conda (university-dev)` kit if
 CMake Tools asks for a kit the first time. CMake Tools stores the active kit in
 its private workspace state and does not provide a supported setting that the
@@ -346,7 +385,8 @@ bootstrap can preselect. It remembers the one-time choice for the workspace.
 
 VS Code applies `.vscode` configuration from the folder opened as the
 workspace. If you open an assignment directory by itself instead of opening it
-under the `uni_dev` workspace, generate the same configuration there with:
+under the `uni_dev` workspace, it does not inherit the generated configuration.
+Generate the same configuration there before the first local build with:
 
 ```bash
 conda activate university-dev
@@ -354,6 +394,12 @@ python /path/to/uni_dev/scripts/configure-vscode.py \
   --workspace "$PWD" \
   --conda-exe "$CONDA_EXE"
 ```
+
+After generation and a VS Code window reload, that standalone workspace also
+uses Conda without a compiler-selection step. If generation is skipped, VS
+Code asks for a compiler on its first active-file build; select the Conda
+`clang++` entry that it detected. That one-time selection is stored only for
+that assignment workspace.
 
 Rerun `./scripts/bootstrap-macos.sh` after moving or updating Miniconda so the
 repository-level paths are regenerated.
