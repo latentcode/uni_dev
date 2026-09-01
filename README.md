@@ -49,6 +49,38 @@ External drives work as bind-mount sources too. Use an absolute path such as
 `/Volumes/CourseWork/classes` and allow that location in Docker Desktop's file
 sharing settings if macOS prompts for access.
 
+## Choose where VS Code runs
+
+The environment supports two distinct VS Code workflows. Linux development is
+not limited to command-line editing.
+
+| Workflow | Editor and tools | Source storage | Best for |
+|---|---|---|---|
+| Local VS Code | VS Code, extensions, Conda, and terminals run on macOS; Docker commands run Linux tools when requested | Mac | Native work or occasional Linux checks |
+| VS Code Dev Container | The VS Code interface stays on the Mac, while extensions, terminals, compilers, Python, debuggers, and Codex operate in Ubuntu | Mac through a bind mount | Full Linux-compatible development |
+
+To open the full Linux programming environment:
+
+1. Open the `uni_dev` repository root in VS Code.
+2. Press `Cmd+Shift+P` and run **Dev Containers: Reopen in Container**.
+3. Select **University Programming**.
+4. Work in `/workspace/classes`, which is the Mac directory selected by
+   `HOST_PROGRAMMING_ROOT`.
+
+Select **University Web Development** instead to work in the Apache container.
+VS Code then opens `/var/www/html`, backed by the Mac directory selected by
+`HOST_WEB_ROOT`.
+
+The lower-left remote indicator identifies a Dev Container window. Its
+integrated terminal is an Ubuntu shell, and builds, tests, language services,
+debuggers, and project-level Codex actions use the container's Linux tools.
+Edits remain immediately visible on the Mac because the source is bind-mounted.
+
+To leave a container, press `Cmd+Shift+P` and run **Dev Containers: Reopen
+Folder Locally**. Starting a container with `docker compose` does not by itself
+move VS Code into Linux; use **Reopen in Container** when the editor and its
+tools should operate there.
+
 ## Initial setup on macOS
 
 Run:
@@ -177,8 +209,9 @@ directory at that same location and generates the Apache virtual-host
 configuration when the container starts.
 
 For the simplest workflow, open `personal/web/` in a normal VS Code window and
-leave Apache in Docker. Alternatively, run **Dev Containers: Open Folder in
-Container** and select `.devcontainer/web/devcontainer.json`.
+leave Apache in Docker. For a complete VS Code session inside Ubuntu, follow
+[Choose where VS Code runs](#choose-where-vs-code-runs) and select
+**University Web Development**.
 
 ## Programming classes
 
@@ -215,10 +248,10 @@ python -m http.server 8000 --bind 0.0.0.0
 
 The browser then uses <http://localhost:8000>.
 
-For a full remote toolchain, select
-`.devcontainer/programming/devcontainer.json` from VS Code's Dev Containers
-commands. Terminals, C++ language services, debugging, and Python then run in
-Ubuntu while the files remain on the Mac.
+For a complete VS Code session using this Ubuntu toolchain, follow [Choose
+where VS Code runs](#choose-where-vs-code-runs) and select **University
+Programming**. The command-line workflow above remains available when a full
+Dev Container window is not needed.
 
 ## Native macOS programming
 
