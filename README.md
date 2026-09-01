@@ -64,22 +64,80 @@ To open the full Linux programming environment:
 1. Open the `uni_dev` repository root in VS Code.
 2. Press `Cmd+Shift+P` and run **Dev Containers: Reopen in Container**.
 3. Select **University Programming**.
-4. Work in `/workspace/classes`, which is the Mac directory selected by
-   `HOST_PROGRAMMING_ROOT`.
+4. Wait for the Dev Container connection to complete, then work under
+   `/workspace/classes`.
 
 Select **University Web Development** instead to work in the Apache container.
-VS Code then opens `/var/www/html`, backed by the Mac directory selected by
-`HOST_WEB_ROOT`.
+VS Code then opens the web document root instead.
 
 The lower-left remote indicator identifies a Dev Container window. Its
 integrated terminal is an Ubuntu shell, and builds, tests, language services,
 debuggers, and project-level Codex actions use the container's Linux tools.
 Edits remain immediately visible on the Mac because the source is bind-mounted.
 
-To leave a container, press `Cmd+Shift+P` and run **Dev Containers: Reopen
-Folder Locally**. Starting a container with `docker compose` does not by itself
-move VS Code into Linux; use **Reopen in Container** when the editor and its
-tools should operate there.
+Starting a container with `docker compose` does not by itself move VS Code into
+Linux; use **Reopen in Container** when the editor and its tools should operate
+there.
+
+### First Dev Container startup and terminal verification
+
+The first connection is normally the slowest. VS Code may need to build the
+image, create the container, install VS Code Server, and install Linux copies
+of the requested extensions. Later connections reuse those components unless
+the image or Dev Container configuration changes.
+
+The setup view may continue to display diagnostic messages such as
+`Extensions cache, remote removals: None`. That view is a Dev Containers log,
+not an interactive Ubuntu command line. Close or ignore it and choose
+**Terminal: Create New Terminal** when a shell is needed.
+
+A terminal that was already open before **Reopen in Container** may still show
+the prior macOS shell. Close that terminal and create a new one after the
+lower-left indicator shows the Dev Container connection. Verify the new shell
+with:
+
+```bash
+whoami
+pwd
+uname -s
+```
+
+Expected programming-container results are `student`, `/workspace/classes`,
+and `Linux`. With the checked-in configuration, expected web-container results
+are `root`, `/var/www/html`, and `Linux`.
+
+### Switching containers and returning to macOS
+
+While connected to one container, **Dev Containers: Reopen in Container** is
+normally absent because the VS Code window is already remote. To move from
+**University Programming** to **University Web Development**, or vice versa:
+
+1. Try **Dev Containers: Switch Container** from the Command Palette.
+2. If that command is unavailable, run **Dev Containers: Reopen Folder
+   Locally**.
+3. From the local window, run **Dev Containers: Reopen in Container** and
+   select the other container.
+
+Use **Dev Containers: Reopen Folder Locally** whenever VS Code extensions,
+terminals, compilers, Python, and Codex should operate on macOS again.
+
+### Container source-directory mappings
+
+The directory shown by `pwd` is the container side of a Docker bind mount. Its
+files remain on the Mac:
+
+| Dev Container | macOS source setting | Default macOS source | Container setting or path | Default `pwd` |
+|---|---|---|---|---|
+| University Web Development | `HOST_WEB_ROOT` | `./personal/web` | `WEB_CONTAINER_WEB_ROOT` | `/var/www/html` |
+| University Programming | `HOST_PROGRAMMING_ROOT` | `./classes` | fixed path | `/workspace/classes` |
+
+Changing `HOST_WEB_ROOT` or `HOST_PROGRAMMING_ROOT` in `.env` changes the Mac
+directory being mounted. It does not change the programming path inside
+Ubuntu. The web path remains `/var/www/html` unless
+`WEB_CONTAINER_WEB_ROOT` is also changed. The checked-in web Dev Container also
+sets `workspaceFolder` to `/var/www/html`; if the container web root is changed,
+update `.devcontainer/web/devcontainer.json` to the same path. See the
+[Configuration](#configuration) variables for path requirements and defaults.
 
 ## Initial setup on macOS
 
@@ -259,25 +317,11 @@ leave Apache in Docker. For a complete VS Code session inside Ubuntu, follow
 
 ### Using VS Code in the programming container
 
-Use a Dev Container window when VS Code itself—including its terminal,
-extensions, compiler integration, debugger, Python support, and Codex—should
-operate in Ubuntu:
-
-1. Start Docker Desktop, but do not run `docker.sh` first; VS Code can start the
-   service itself.
-2. Open the `uni_dev` repository root in VS Code.
-3. Press `Cmd+Shift+P` and run **Dev Containers: Reopen in Container**.
-4. Select **University Programming**.
-5. Wait for VS Code to build or start the Compose service and install the
-   requested remote extensions.
-6. Open an assignment under `/workspace/classes` in the Explorer and edit it
-   normally.
-
-The lower-left remote indicator shows **University Programming** when the
-window is connected. The integrated terminal is an Ubuntu shell, C and C++ use
-GCC/G++, Python uses the container interpreter, and CMake generates Linux build
-output. The `/workspace/classes` files are still stored in the Mac directory
-selected by `HOST_PROGRAMMING_ROOT`.
+Follow [Choose where VS Code runs](#choose-where-vs-code-runs) and select
+**University Programming**. VS Code can start the service itself, so
+`docker.sh` does not need to be run first. C and C++ then use GCC/G++, Python
+uses the container interpreter, and CMake generates Linux build output while
+the source remains on the Mac.
 
 For a simple C++ file, the container's C/C++ extension may show its normal
 first-run build-compiler picker because each user-owned source workspace has
@@ -285,9 +329,8 @@ its own build configuration. Select the entry for `/usr/bin/g++`; VS Code saves
 that choice in the source workspace's `.vscode/tasks.json`. A CMake-based
 assignment should normally be configured and built with CMake Tools instead.
 
-To return to macOS tooling, press `Cmd+Shift+P` and run **Dev Containers:
-Reopen Folder Locally**. Opening or closing a Dev Container does not move or
-delete the bind-mounted source files.
+Opening, switching, or closing a Dev Container does not move or delete the
+bind-mounted source files.
 
 ### Starting and stopping the programming container
 
@@ -343,6 +386,138 @@ For a complete VS Code session using this Ubuntu toolchain, follow [Choose
 where VS Code runs](#choose-where-vs-code-runs) and select **University
 Programming**. The command-line workflow above remains available when a full
 Dev Container window is not needed.
+
+## Adding an assignment-specific Dev Container (experimental)
+
+> **Experimental:** The patterns in this section have not yet been tested as
+> part of `uni_dev`. Professor-provided images, Dockerfiles, Compose files, and
+> course requirements vary. Inspect and test each assignment environment before
+> relying on it.
+
+A professor-provided Docker environment should normally remain associated with
+that assignment instead of being merged into the shared `programming` image.
+This preserves the professor's expected tool versions and prevents one course
+from changing another course's environment.
+
+### Recommended: keep the Dev Container with the assignment
+
+Store the assignment under the user-owned classes directory and add a
+`.devcontainer/devcontainer.json` inside it:
+
+```text
+classes/cs301-assignment-1/
+├── .devcontainer/
+│   └── devcontainer.json
+├── Dockerfile or compose.yaml
+└── assignment source files
+```
+
+If the professor already supplies `devcontainer.json`, use it as provided after
+reviewing it. Otherwise, create a small wrapper appropriate to the supplied
+Docker format.
+
+For a Dockerfile at the assignment root:
+
+```json
+{
+  "name": "CS301 Assignment 1",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools-extension-pack",
+        "ms-python.python",
+        "openai.chatgpt"
+      ]
+    }
+  }
+}
+```
+
+For a published image:
+
+```json
+{
+  "name": "CS301 Assignment 1",
+  "image": "professor/course-environment:version",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}"
+}
+```
+
+Prefer a versioned tag or image digest supplied by the professor over
+`latest`, so the environment does not change unexpectedly during the course.
+
+For a Compose file at the assignment root:
+
+```json
+{
+  "name": "CS301 Assignment 1",
+  "dockerComposeFile": "../compose.yaml",
+  "service": "assignment",
+  "workspaceFolder": "/workspace"
+}
+```
+
+For the Compose form, replace `assignment` and `/workspace` with the service
+name and bind-mounted working directory defined by the professor's file. The
+service must mount the assignment source at the selected `workspaceFolder`.
+
+Open the assignment directory—not the `uni_dev` root—in VS Code, then run
+**Dev Containers: Reopen in Container**. This approach works whether the
+assignment uses its own Git repository, another version-control system, or no
+version control. If the assignment is a Git repository and course policy
+permits it, its Dev Container configuration can be committed with that
+assignment.
+
+### Optional: add the assignment to the `uni_dev` container chooser
+
+If selecting every environment from the `uni_dev` root is important, a local
+wrapper can be placed at:
+
+```text
+.devcontainer/local-cs301-assignment-1/devcontainer.json
+```
+
+For an assignment Dockerfile, an experimental wrapper would look like:
+
+```json
+{
+  "name": "CS301 Assignment 1",
+  "build": {
+    "dockerfile": "../../classes/cs301-assignment-1/Dockerfile",
+    "context": "../../classes/cs301-assignment-1"
+  },
+  "workspaceMount": "source=${localWorkspaceFolder}/classes/cs301-assignment-1,target=/workspace,type=bind",
+  "workspaceFolder": "/workspace"
+}
+```
+
+With `uni_dev` open locally, this should add **CS301 Assignment 1** to the list
+shown by **Dev Containers: Reopen in Container**. This root-wrapper approach is
+less portable and has not been validated in this project. Keep user-specific
+wrappers out of the `uni_dev` repository; for example, add
+`.devcontainer/local-*/` to the clone's `.git/info/exclude`. The
+assignment-local approach above remains the recommendation.
+
+### Review supplied environments before running them
+
+Treat Docker configuration as executable code. Before opening a supplied
+environment:
+
+- Review its Dockerfile, Compose file, entrypoint, setup scripts, and image
+  source.
+- Mount only the assignment directory. Avoid mounting the entire home
+  directory, credentials, SSH keys, or `/var/run/docker.sock` unless the course
+  has a clear and trusted requirement.
+- Do not place GitHub, OpenAI, or other secrets in the image or committed files.
+- Check whether the image supports the Mac's CPU architecture. An
+  `linux/amd64`-only image may require Docker Desktop emulation on an Apple
+  Silicon Mac and will usually run more slowly.
+- Preserve any professor-required ports, commands, users, and submission tools.
 
 ## Native macOS programming
 
