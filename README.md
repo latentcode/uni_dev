@@ -184,23 +184,65 @@ Official Codex setup references:
 - [Codex CLI](https://learn.chatgpt.com/docs/codex/cli)
 - [Codex IDE extension](https://learn.chatgpt.com/docs/codex/ide)
 
-## Web development
+## Docker
 
-Start Apache:
+The provided wrapper script supplies consistent commands for starting and
+stopping the web and programming services. The examples using
+`./scripts/docker.sh` assume the current directory is the `uni_dev` root.
+
+### Underlying Compose commands
+
+The wrapper uses Docker Compose. In the commands below, `<service>` is either
+`web` or `programming`; it is a Compose service name, not the generated
+container name.
+
+Build and start a service:
+
+```bash
+docker compose up -d --build <service>
+```
+
+For example:
 
 ```bash
 docker compose up -d --build web
 ```
 
-Open <http://localhost:8080>, or use the port selected by `WEB_HOST_PORT`.
-
-Useful commands:
+Stop a service:
 
 ```bash
-docker compose logs -f web
-docker compose exec web bash
-docker compose exec web python --version
-docker compose stop web
+docker compose stop <service>
+```
+
+Other useful Compose commands:
+
+```bash
+docker compose logs -f <service>
+docker compose exec <service> bash
+docker compose exec <service> python --version
+```
+
+Type `exit` or press `Control-D` to leave a container's Bash shell and return
+to the macOS shell. Leaving the shell does not stop the container.
+
+## Web development
+
+### Starting and stopping Apache
+
+Commands shown must be run from the uni_dev root directory.
+
+Start Apache:
+
+```bash
+./scripts/docker.sh --web --start
+```
+
+Open <http://localhost:8080>, or use the port selected by `WEB_HOST_PORT`.
+
+Stop Apache:
+
+```bash
+./scripts/docker.sh --web --stop
 ```
 
 Apache serves the host directory selected by `HOST_WEB_ROOT`. The container
@@ -215,14 +257,31 @@ leave Apache in Docker. For a complete VS Code session inside Ubuntu, follow
 
 ## Programming classes
 
+### Starting and stopping the programming container
+
+Commands shown must be run from the uni_dev root directory.
+
 Start the Ubuntu programming container:
 
 ```bash
-docker compose up -d --build programming
-docker compose exec programming bash
+./scripts/docker.sh --code --start
 ```
 
-Example Linux C++ build:
+After starting the service, the script opens its Ubuntu Bash shell. Type `exit`
+or press `Control-D` to return to the macOS shell. The programming container
+continues running until it is stopped explicitly.
+
+Stop the Ubuntu programming container:
+
+```bash
+./scripts/docker.sh --code --stop
+```
+
+### Examples
+
+These examples run from the programming container's Ubuntu shell.
+
+#### C++ build:
 
 ```bash
 cd /workspace/classes/example-assignment
@@ -231,7 +290,7 @@ cmake --build build-linux
 ctest --test-dir build-linux
 ```
 
-Example container-only Python environment:
+#### Container-only Python environment:
 
 ```bash
 python -m venv /home/student/.venvs/example-assignment
